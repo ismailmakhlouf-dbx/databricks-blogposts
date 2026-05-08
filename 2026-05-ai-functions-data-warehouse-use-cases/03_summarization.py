@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Pattern 3: Long-form Summarization for BI Workflows
+# MAGIC # Use Case 3: Long-form Summarization for BI Workflows
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_query` with structured response format (`responseFormat => 'STRUCT<...>'`)
 # MAGIC to extract typed fields from long-form text — turning unstructured call transcripts into a queryable BI table.
@@ -90,7 +90,7 @@
 # MAGIC     CONCAT(
 # MAGIC       'From this sales call transcript, extract the following. Return null for any field not found. ',
 # MAGIC       'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC       'owner: first name of the person responsible for the next step (customer or rep). ',
+# MAGIC       'owner: who is responsible for the next step — use Rep for the sales rep or Customer for the customer. ',
 # MAGIC       'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
 # MAGIC       'risk_flag: true if there is a deal risk, false otherwise. ',
 # MAGIC       'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
@@ -118,7 +118,7 @@
 # MAGIC       CONCAT(
 # MAGIC         'From this sales call transcript, extract the following. Return null for any field not found. ',
 # MAGIC         'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC         'owner: first name of the person responsible (customer or rep). ',
+# MAGIC         'owner: who is responsible for the next step — use Rep for the sales rep or Customer for the customer. ',
 # MAGIC         'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
 # MAGIC         'risk_flag: true if there is a deal risk, false otherwise. ',
 # MAGIC         'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
@@ -153,13 +153,19 @@
 # MAGIC %md
 # MAGIC ## Expected output
 # MAGIC
-# MAGIC | call_id | account_id | deal_stage | risk_flag | risk_reason | next_step |
-# MAGIC |---|---|---|---|---|---|
-# MAGIC | CALL-001 | ACCT-0042 | negotiation | true | 40% price increase vs 15% budget; CFO evaluating competitors | Rep to align on multi-year pricing before Thursday CFO call |
-# MAGIC | CALL-003 | ACCT-0115 | technical_validation | true | June 1 hard cutover deadline; migration 60% complete and blocked on window function syntax | Rep to bring in migration engineering team by end of week |
-# MAGIC | CALL-002 | ACCT-0088 | negotiation | false | null | Rep to send SAML docs; infosec review expected ~2 weeks |
-# MAGIC | CALL-004 | ACCT-0204 | evaluation | false | null | Rep to send AI Functions notebook template and cost estimate |
-# MAGIC | CALL-005 | ACCT-0331 | renewal | false | null | Rep to send capacity planning guide and Unity Catalog compliance docs |
+# MAGIC | call_id | account_id | deal_stage | owner | risk_flag | risk_reason | next_step |
+# MAGIC |---|---|---|---|---|---|---|
+# MAGIC | CALL-001 | ACCT-0042 | negotiation | Rep | true | 40% price increase vs 15% budget; CFO evaluating competitors | Rep to align on multi-year pricing before Thursday CFO call |
+# MAGIC | CALL-003 | ACCT-0115 | technical_validation | Rep | true | June 1 hard cutover deadline; migration 60% complete and blocked on window function syntax | Rep to bring in migration engineering team by end of week |
+# MAGIC | CALL-002 | ACCT-0088 | negotiation | Rep | false | null | Rep to send SAML docs; infosec review expected ~2 weeks |
+# MAGIC | CALL-004 | ACCT-0204 | evaluation | Rep | false | null | Rep to send AI Functions notebook template and cost estimate |
+# MAGIC | CALL-005 | ACCT-0331 | renewal | Rep | false | null | Rep to send capacity planning guide and Unity Catalog compliance docs |
+# MAGIC
+# MAGIC ## Key behavior to verify
+# MAGIC - The `owner` field returns `Rep` or `Customer` — not a first name. The transcripts use role labels ("Rep:", "Customer:") with no personal names, so the prompt explicitly instructs the model to use these labels. If your real transcripts include speaker names, update the prompt to: `owner: first name of the person responsible for the next step`.
+# MAGIC - `risk_flag` is a boolean: CALL-001 (price shock + competitive eval) and CALL-003 (hard deadline + blocked migration) are the expected risk rows.
+# MAGIC - `deal_stage` values are constrained to the enum in the prompt — the model will not return values outside that list.
+# MAGIC - `from_json` is used to flatten the struct because `ai_query` with `responseFormat => STRUCT<...>` returns the inner fields as a JSON string that must be parsed. This is the standard pattern for nested struct extraction in Databricks SQL.
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Point this at `gold.call_transcripts` and schedule it nightly
