@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Pattern 1: Document Intelligence — Turning PDFs into Rows
+# MAGIC # Use Case 1: Document Intelligence — Turning PDFs into Rows
 # MAGIC
 # MAGIC **What this notebook does:** Demonstrates how to use `ai_parse_document` + `ai_query` to extract structured
 # MAGIC data from PDF documents stored in cloud storage — no OCR service, no Python pre-processing.
