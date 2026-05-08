@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Pattern 5: Customer Feedback Sentiment Analysis — Closing the Loop on What Users Actually Think
+# MAGIC # Use Case 5: Customer Feedback Sentiment Analysis — Closing the Loop on What Users Actually Think
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_analyze_sentiment` + `ai_classify` to turn raw NPS verbatims and
 # MAGIC support responses into structured feedback signals — polarity, topic, and urgency in one query.
@@ -8,9 +8,6 @@
 # MAGIC **What you need to run this:**
 # MAGIC - Databricks SQL warehouse (Serverless recommended) or DBR 14.3+
 # MAGIC - Unity Catalog + AI Functions enabled
-# MAGIC
-# MAGIC **Why this pattern:** Running in 1,642 distinct customer workspaces (per Databricks internal usage data, April 2026).
-# MAGIC Highest adoption in SaaS, retail (post-purchase surveys), and contact-center analytics teams.
 # MAGIC
 # MAGIC **Estimated cost:** < 0.3 DBU per run (12 rows)
 
@@ -128,7 +125,7 @@
 # MAGIC
 # MAGIC | response_id | channel | nps_score | sentiment | topic | urgency | action |
 # MAGIC |---|---|---|---|---|---|---|
-# MAGIC | NPS-008 | web_app | 1 | negative | cancel_signal | high_urgency | 🔴 Retention: call today |
+# MAGIC | NPS-008 | web_app | 1 | negative | cancel_signal | low_urgency | 🔴 Retention: call today |
 # MAGIC | NPS-004 | support | 2 | negative | support_experience | high_urgency | 🟠 High-priority: follow up 24h |
 # MAGIC | NPS-002 | mobile_app | 3 | negative | performance_issue | high_urgency | 🟠 High-priority: follow up 24h |
 # MAGIC | NPS-007 | support | 5 | mixed | support_experience | medium_urgency | 🟡 Finance review |
@@ -145,6 +142,7 @@
 # MAGIC - `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` — NOT a numeric score
 # MAGIC - A high NPS score (e.g., 7/10) with a `mixed` sentiment is valid — the model captures nuance the score misses
 # MAGIC - `ai_classify` and `ai_analyze_sentiment` are independent calls — combine them for compound filters
+# MAGIC - **Past-tense cancel signals (NPS-008):** "We moved to a competitor last month" is correctly read as already-churned, so `urgency = low_urgency`. The `cancel_signal` topic still triggers the retention action — urgency does not gate it. This is correct model behavior. If you want all cancel signals treated as `high_urgency` regardless of tense, add a CASE override in the final SELECT: `CASE WHEN topic = 'cancel_signal' THEN 'high_urgency' ELSE urgency END AS urgency`
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Point this at `bronze.nps_responses` and schedule it nightly in your existing pipeline
