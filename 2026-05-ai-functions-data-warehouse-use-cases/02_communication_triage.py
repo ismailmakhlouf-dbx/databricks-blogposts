@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Pattern 2: Customer Communication Triage — Classifying Tickets and Calls at Scale
+# MAGIC # Use Case 2: Customer Communication Triage — Classifying Tickets and Calls at Scale
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_classify` to tag support tickets with intent category and urgency level
 # MAGIC in a single SQL query — no model to train, no labels to maintain.
@@ -88,9 +88,9 @@
 # MAGIC   intent,
 # MAGIC   urgency,
 # MAGIC   CASE
+# MAGIC     WHEN intent = 'cancel_request' THEN 'Retention team → 2-hour SLA'
 # MAGIC     WHEN urgency = 'critical' AND customer_segment = 'enterprise' THEN 'PagerDuty → On-call engineer'
 # MAGIC     WHEN urgency = 'critical' THEN 'High-priority queue → 30-min SLA'
-# MAGIC     WHEN intent = 'cancel_request' THEN 'Retention team → 2-hour SLA'
 # MAGIC     WHEN intent = 'billing_issue' THEN 'Billing team → 4-hour SLA'
 # MAGIC     WHEN intent = 'technical_outage' AND urgency IN ('high', 'critical') THEN 'Engineering → 1-hour SLA'
 # MAGIC     ELSE 'Standard queue → 24-hour SLA'
@@ -117,6 +117,11 @@
 # MAGIC | TKT-007 | basic | product_question | low | Standard queue → 24-hour SLA |
 # MAGIC | TKT-009 | enterprise | feature_request | low | Standard queue → 24-hour SLA |
 # MAGIC | TKT-005 | premium | praise | low | Standard queue → 24-hour SLA |
+# MAGIC
+# MAGIC ## Key behavior to verify
+# MAGIC - `ai_classify` is non-deterministic: the same ticket may get different urgency labels across runs. This is expected — urgency is a judgment call, and the model may read the same text slightly differently each time.
+# MAGIC - **Cancel requests always route to Retention** regardless of urgency. The CASE checks `intent = 'cancel_request'` first — before any urgency check — so even a ticket classified as `critical` urgency goes to Retention, not PagerDuty. This is intentional: a critical cancel signal is a retention problem, not an outage.
+# MAGIC - If you want critical cancel signals to page on-call *and* notify retention, add a second output column for the secondary action instead of relying on a single routing field.
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Replace `demo_support_tickets` with your live `bronze.support_tickets` table
