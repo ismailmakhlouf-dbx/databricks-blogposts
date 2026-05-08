@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Pattern 4: Inline Translation and Normalization for Multilingual Data
+# MAGIC # Use Case 4: Inline Translation and Normalization for Multilingual Data
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_translate` + `ai_extract` to translate product reviews from multiple languages
 # MAGIC into English and extract structured attributes — in a single SQL query with no external translation API.
