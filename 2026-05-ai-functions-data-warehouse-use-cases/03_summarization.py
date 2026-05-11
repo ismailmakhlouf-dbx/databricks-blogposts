@@ -3,7 +3,7 @@
 # MAGIC # Use Case 3: Long-form Summarization for BI Workflows
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_query` with structured response format (`responseFormat => 'STRUCT<...>'`)
-# MAGIC to extract typed fields from long-form text — turning unstructured call transcripts into a queryable BI table.
+# MAGIC to extract typed fields from long-form text - turning unstructured call transcripts into a queryable BI table.
 # MAGIC
 # MAGIC **What you need to run this:**
 # MAGIC - Databricks SQL warehouse (Serverless recommended) or DBR 14.3+
@@ -36,7 +36,7 @@
 # MAGIC     'Rep: How did the POC go?
 # MAGIC Customer: Really well. We processed 2 million records in about 40 minutes. Our old system took overnight.
 # MAGIC Rep: Great. Any blockers before we move to contract?
-# MAGIC Customer: One — we need SSO sorted before we can sign. Our infosec team is not going to approve without it.
+# MAGIC Customer: One - we need SSO sorted before we can sign. Our infosec team is not going to approve without it.
 # MAGIC Rep: SSO is standard in the enterprise tier. I will send you the SAML docs today. How long does infosec usually take?
 # MAGIC Customer: If we get them docs this week, probably two weeks review. So we are looking at signing early May.
 # MAGIC Rep: Perfect. I will loop in our integration engineer to get you through onboarding fast once signed.'
@@ -52,12 +52,12 @@
 # MAGIC   ),
 # MAGIC   (
 # MAGIC     'CALL-004', 'ACCT-0204', '2026-04-17',
-# MAGIC     'Rep: I wanted to check in — you mentioned last month you were exploring AI use cases.
+# MAGIC     'Rep: I wanted to check in - you mentioned last month you were exploring AI use cases.
 # MAGIC Customer: Yes, we have been running a small experiment. We are using your AI Functions to classify customer complaint emails. It is working well but we are not sure how to scale it.
 # MAGIC Rep: What does your current setup look like?
 # MAGIC Customer: One data engineer, running it manually on a sample every Friday. We want to make it daily and connect it to our CRM.
 # MAGIC Rep: That is exactly the kind of workflow our SQL warehouse is built for. Let me send you a notebook template.
-# MAGIC Customer: That would be great. We are also wondering about cost — we are worried it will get expensive.
+# MAGIC Customer: That would be great. We are also wondering about cost - we are worried it will get expensive.
 # MAGIC Rep: The AI Functions pricing is DBU-based, same model as everything else. I can run a cost estimate before your next planning cycle.'
 # MAGIC   ),
 # MAGIC   (
@@ -65,7 +65,7 @@
 # MAGIC     'Rep: How is the platform performing after the first month live?
 # MAGIC Customer: Honestly, better than expected. Query times are down significantly compared to what we had before. The team is happy.
 # MAGIC Rep: Any concerns going into Q2?
-# MAGIC Customer: Two things. One — we are going to need more compute headroom as we onboard three more business units in May. Two — we have a compliance audit in Q3 and need documentation on your data lineage capabilities.
+# MAGIC Customer: Two things. One - we are going to need more compute headroom as we onboard three more business units in May. Two - we have a compliance audit in Q3 and need documentation on your data lineage capabilities.
 # MAGIC Rep: For compute, I will send you the capacity planning guide and connect you with our platform team. For lineage, Unity Catalog has a full API-level lineage export. I will send you the compliance documentation today.
 # MAGIC Customer: Perfect. Overall very happy with where things are. Looking forward to the next quarter.'
 # MAGIC   )
@@ -90,7 +90,7 @@
 # MAGIC     CONCAT(
 # MAGIC       'From this sales call transcript, extract the following. Return null for any field not found. ',
 # MAGIC       'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC       'owner: who is responsible for the next step — use Rep for the sales rep or Customer for the customer. ',
+# MAGIC       'owner: who is responsible for the next step - use Rep for the sales rep or Customer for the customer. ',
 # MAGIC       'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
 # MAGIC       'risk_flag: true if there is a deal risk, false otherwise. ',
 # MAGIC       'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
@@ -118,7 +118,7 @@
 # MAGIC       CONCAT(
 # MAGIC         'From this sales call transcript, extract the following. Return null for any field not found. ',
 # MAGIC         'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC         'owner: who is responsible for the next step — use Rep for the sales rep or Customer for the customer. ',
+# MAGIC         'owner: who is responsible for the next step - use Rep for the sales rep or Customer for the customer. ',
 # MAGIC         'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
 # MAGIC         'risk_flag: true if there is a deal risk, false otherwise. ',
 # MAGIC         'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
@@ -162,13 +162,13 @@
 # MAGIC | CALL-005 | ACCT-0331 | renewal | Rep | false | null | Rep to send capacity planning guide and Unity Catalog compliance docs |
 # MAGIC
 # MAGIC ## Key behavior to verify
-# MAGIC - The `owner` field returns `Rep` or `Customer` — not a first name. The transcripts use role labels ("Rep:", "Customer:") with no personal names, so the prompt explicitly instructs the model to use these labels. If your real transcripts include speaker names, update the prompt to: `owner: first name of the person responsible for the next step`.
+# MAGIC - The `owner` field returns `Rep` or `Customer` - not a first name. The transcripts use role labels ("Rep:", "Customer:") with no personal names, so the prompt explicitly instructs the model to use these labels. If your real transcripts include speaker names, update the prompt to: `owner: first name of the person responsible for the next step`.
 # MAGIC - `risk_flag` is a boolean: CALL-001 (price shock + competitive eval) and CALL-003 (hard deadline + blocked migration) are the expected risk rows.
-# MAGIC - `deal_stage` values are constrained to the enum in the prompt — the model will not return values outside that list.
+# MAGIC - `deal_stage` values are constrained to the enum in the prompt - the model will not return values outside that list.
 # MAGIC - `from_json` is used to flatten the struct because `ai_query` with `responseFormat => STRUCT<...>` returns the inner fields as a JSON string that must be parsed. This is the standard pattern for nested struct extraction in Databricks SQL.
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Point this at `gold.call_transcripts` and schedule it nightly
 # MAGIC - `MERGE INTO gold.call_summaries` by `call_id` to keep the table current
 # MAGIC - Connect a BI dashboard to filter `WHERE risk_flag = true` for a real-time deal risk view
-# MAGIC - Version the prompt by keeping it in a `gold.prompt_registry` table — same change management as your dbt models
+# MAGIC - Version the prompt by keeping it in a `gold.prompt_registry` table - same change management as your dbt models

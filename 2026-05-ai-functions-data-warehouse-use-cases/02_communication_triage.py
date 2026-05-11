@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Use Case 2: Customer Communication Triage — Classifying Tickets and Calls at Scale
+# MAGIC # Use Case 2: Customer Communication Triage - Classifying Tickets and Calls at Scale
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_classify` to tag support tickets with intent category and urgency level
-# MAGIC in a single SQL query — no model to train, no labels to maintain.
+# MAGIC in a single SQL query - no model to train, no labels to maintain.
 # MAGIC
 # MAGIC **What you need to run this:**
 # MAGIC - Databricks SQL warehouse (Serverless recommended) or DBR 14.3+
@@ -21,7 +21,7 @@
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TEMP VIEW demo_support_tickets AS
 # MAGIC SELECT * FROM VALUES
-# MAGIC   ('TKT-001', 'premium', 'I was charged twice for my subscription this month. Please fix this immediately — I need this resolved today.'),
+# MAGIC   ('TKT-001', 'premium', 'I was charged twice for my subscription this month. Please fix this immediately - I need this resolved today.'),
 # MAGIC   ('TKT-002', 'basic', 'The dashboard keeps timing out when I try to export more than 1000 rows. Has been happening for 3 days.'),
 # MAGIC   ('TKT-003', 'enterprise', 'We are evaluating your product against competitors. Can you send me pricing for 500 seats?'),
 # MAGIC   ('TKT-004', 'basic', 'I am cancelling my subscription. Your support response time is unacceptable.'),
@@ -40,7 +40,7 @@
 # MAGIC %md
 # MAGIC ## Step 2: Classify intent and urgency in one query
 # MAGIC
-# MAGIC `ai_classify` picks the best matching label from your array. Change the labels any time — no retraining.
+# MAGIC `ai_classify` picks the best matching label from your array. Change the labels any time - no retraining.
 
 # COMMAND ----------
 
@@ -119,8 +119,8 @@
 # MAGIC | TKT-005 | premium | praise | low | Standard queue → 24-hour SLA |
 # MAGIC
 # MAGIC ## Key behavior to verify
-# MAGIC - `ai_classify` is non-deterministic: the same ticket may get different urgency labels across runs. This is expected — urgency is a judgment call, and the model may read the same text slightly differently each time.
-# MAGIC - **Cancel requests always route to Retention** regardless of urgency. The CASE checks `intent = 'cancel_request'` first — before any urgency check — so even a ticket classified as `critical` urgency goes to Retention, not PagerDuty. This is intentional: a critical cancel signal is a retention problem, not an outage.
+# MAGIC - `ai_classify` is non-deterministic: the same ticket may get different urgency labels across runs. This is expected - urgency is a judgment call, and the model may read the same text slightly differently each time.
+# MAGIC - **Cancel requests always route to Retention** regardless of urgency. The CASE checks `intent = 'cancel_request'` first - before any urgency check - so even a ticket classified as `critical` urgency goes to Retention, not PagerDuty. This is intentional: a critical cancel signal is a retention problem, not an outage.
 # MAGIC - If you want critical cancel signals to page on-call *and* notify retention, add a second output column for the secondary action instead of relying on a single routing field.
 # MAGIC
 # MAGIC ## What to do next

@@ -1,15 +1,15 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Use Case 1: Document Intelligence — Turning PDFs into Rows
+# MAGIC # Use Case 1: Document Intelligence - Turning PDFs into Rows
 # MAGIC
 # MAGIC **What this notebook does:** Demonstrates how to use `ai_parse_document` + `ai_query` to extract structured
-# MAGIC data from PDF documents stored in cloud storage — no OCR service, no Python pre-processing.
+# MAGIC data from PDF documents stored in cloud storage - no OCR service, no Python pre-processing.
 # MAGIC
 # MAGIC **What you need to run this:**
 # MAGIC - A Databricks SQL warehouse (Serverless recommended) or compute cluster with DBR 14.3+
 # MAGIC - Unity Catalog enabled on your workspace
 # MAGIC - AI Functions enabled (Settings → Workspace Admin → AI Functions)
-# MAGIC - The dummy data below does not require real PDFs — it simulates parsed document content
+# MAGIC - The dummy data below does not require real PDFs - it simulates parsed document content
 # MAGIC
 # MAGIC **Estimated cost:** < 0.5 DBU per run (5 rows, short documents)
 
@@ -19,7 +19,7 @@
 # MAGIC ## Step 1: Create dummy invoice data
 # MAGIC
 # MAGIC In production, `ai_parse_document` reads binary PDF content directly from cloud storage.
-# MAGIC For this demo, we simulate the *output* of `ai_parse_document` — the extracted raw text —
+# MAGIC For this demo, we simulate the *output* of `ai_parse_document` - the extracted raw text -
 # MAGIC so you can see how `ai_query` processes it without needing real PDFs.
 
 # COMMAND ----------
@@ -183,7 +183,7 @@
 # MAGIC | INV-004 | Dupont Industrie | F-2026-155 | 2026-04-17 | 1680.00 | EUR | null |
 # MAGIC | INV-005 | Apex Consulting Group | ACG-2026-Q2-003 | 2026-04-18 | 16535.40 | USD | null |
 # MAGIC
-# MAGIC Note: The model handles English, German, French, and Australian English invoices in a single query — no language detection step required.
+# MAGIC Note: The model handles English, German, French, and Australian English invoices in a single query - no language detection step required.
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Replace `demo_invoice_text` with `read_files('s3://your-bucket/invoices/', format => 'binaryFile')` and add `ai_parse_document(content)` to read real PDFs

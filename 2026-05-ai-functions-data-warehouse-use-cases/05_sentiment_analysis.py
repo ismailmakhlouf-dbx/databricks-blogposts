@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Use Case 5: Customer Feedback Sentiment Analysis — Closing the Loop on What Users Actually Think
+# MAGIC # Use Case 5: Customer Feedback Sentiment Analysis - Closing the Loop on What Users Actually Think
 # MAGIC
 # MAGIC **What this notebook does:** Uses `ai_analyze_sentiment` + `ai_classify` to turn raw NPS verbatims and
-# MAGIC support responses into structured feedback signals — polarity, topic, and urgency in one query.
+# MAGIC support responses into structured feedback signals - polarity, topic, and urgency in one query.
 # MAGIC
 # MAGIC **What you need to run this:**
 # MAGIC - Databricks SQL warehouse (Serverless recommended) or DBR 14.3+
@@ -42,7 +42,7 @@
 # MAGIC %md
 # MAGIC ## Step 2: Add sentiment + topic classification in one query
 # MAGIC
-# MAGIC `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` — no score, just polarity.
+# MAGIC `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` - no score, just polarity.
 # MAGIC Use alongside `ai_classify` for topic and urgency tagging.
 
 # COMMAND ----------
@@ -139,10 +139,10 @@
 # MAGIC | NPS-009 | mobile_app | 6 | mixed | performance_issue | medium_urgency | ⚪ Standard |
 # MAGIC
 # MAGIC ## Key behavior to verify
-# MAGIC - `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` — NOT a numeric score
-# MAGIC - A high NPS score (e.g., 7/10) with a `mixed` sentiment is valid — the model captures nuance the score misses
-# MAGIC - `ai_classify` and `ai_analyze_sentiment` are independent calls — combine them for compound filters
-# MAGIC - **Past-tense cancel signals (NPS-008):** "We moved to a competitor last month" is correctly read as already-churned, so `urgency = low_urgency`. The `cancel_signal` topic still triggers the retention action — urgency does not gate it. This is correct model behavior. If you want all cancel signals treated as `high_urgency` regardless of tense, add a CASE override in the final SELECT: `CASE WHEN topic = 'cancel_signal' THEN 'high_urgency' ELSE urgency END AS urgency`
+# MAGIC - `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` - NOT a numeric score
+# MAGIC - A high NPS score (e.g., 7/10) with a `mixed` sentiment is valid - the model captures nuance the score misses
+# MAGIC - `ai_classify` and `ai_analyze_sentiment` are independent calls - combine them for compound filters
+# MAGIC - **Past-tense cancel signals (NPS-008):** "We moved to a competitor last month" is correctly read as already-churned, so `urgency = low_urgency`. The `cancel_signal` topic still triggers the retention action - urgency does not gate it. This is correct model behavior. If you want all cancel signals treated as `high_urgency` regardless of tense, add a CASE override in the final SELECT: `CASE WHEN topic = 'cancel_signal' THEN 'high_urgency' ELSE urgency END AS urgency`
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Point this at `bronze.nps_responses` and schedule it nightly in your existing pipeline

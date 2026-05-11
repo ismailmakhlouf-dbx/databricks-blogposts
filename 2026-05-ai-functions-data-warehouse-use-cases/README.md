@@ -10,7 +10,7 @@ Authors: Ismail Makhlouf, Srikant Das (Databricks Solutions Architects)
 
 ## What's here
 
-Five copy-paste-ready SQL notebooks demonstrating production-grade AI Functions patterns. Each notebook includes dummy data, step-by-step instructions, and expected output — runnable on any Databricks SQL warehouse (Serverless recommended) with AI Functions enabled.
+Five copy-paste-ready SQL notebooks demonstrating production-grade AI Functions patterns. Each notebook includes dummy data, step-by-step instructions, and expected output - runnable on any Databricks SQL warehouse (Serverless recommended) with AI Functions enabled.
 
 | Notebook | Pattern | Functions Used |
 |---|---|---|
@@ -27,7 +27,7 @@ Five copy-paste-ready SQL notebooks demonstrating production-grade AI Functions 
 - Databricks SQL warehouse (Serverless recommended) or a cluster with DBR 14.3+
 - Unity Catalog enabled
 - AI Functions enabled (Workspace Settings → AI Functions)
-- No external data required — all notebooks use inline dummy data
+- No external data required - all notebooks use inline dummy data
 
 ---
 
@@ -35,7 +35,7 @@ Five copy-paste-ready SQL notebooks demonstrating production-grade AI Functions 
 
 1. Import any notebook into your Databricks workspace (File → Import, or use the `.dbc` bundle: `ai-functions-all-notebooks.dbc`)
 2. Attach to a running SQL warehouse
-3. Run all cells — the dummy data is created inline, no external tables needed
+3. Run all cells - the dummy data is created inline, no external tables needed
 4. Read the expected output table in the final cell to verify results
 
 ---
