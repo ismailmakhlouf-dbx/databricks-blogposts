@@ -59,6 +59,54 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Step 1b: How `ai_parse_document` feeds into `ai_query` (production pattern)
+# MAGIC
+# MAGIC In production, you do not simulate the parsed text - you read real binary files and let
+# MAGIC `ai_parse_document` convert them. Here is how the two functions chain in a single query:
+# MAGIC
+# MAGIC 1. **Inner SELECT**: `read_files(...)` with `format => 'binaryFile'` reads the raw bytes of each file.
+# MAGIC    `ai_parse_document(content)` converts those bytes into a structured text string - preserving
+# MAGIC    headers, tables, and layout from the original PDF or image. The result is aliased as `parsed_content`.
+# MAGIC
+# MAGIC 2. **Outer SELECT**: `ai_query(...)` receives `parsed_content` as part of the prompt string via `CONCAT`.
+# MAGIC    The model never sees raw binary - only the structured text that `ai_parse_document` extracted.
+# MAGIC
+# MAGIC The query planner handles both functions in one execution plan. No intermediate files, no Python glue.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Production pattern: ai_parse_document → ai_query in a single query
+# MAGIC -- Replace 's3://invoices/inbox/' with your actual object storage path.
+# MAGIC -- This cell is commented out because it requires real binary PDFs to run.
+# MAGIC -- Uncomment and replace the path to use with actual documents.
+# MAGIC
+# MAGIC /*
+# MAGIC SELECT
+# MAGIC   document_path,
+# MAGIC   ai_query(
+# MAGIC     'databricks-claude-sonnet-4',
+# MAGIC     CONCAT(
+# MAGIC       'Extract vendor_name, invoice_no, invoice_date, ',
+# MAGIC       'total_amount, currency, line_items as JSON. Document: ',
+# MAGIC       parsed_content
+# MAGIC     ),
+# MAGIC     responseFormat => 'STRUCT<vendor_name:STRING, invoice_no:STRING, invoice_date:DATE, total_amount:DECIMAL(18,2), currency:STRING, line_items:STRING>'
+# MAGIC   ) AS extracted
+# MAGIC FROM (
+# MAGIC   SELECT
+# MAGIC     path AS document_path,
+# MAGIC     ai_parse_document(content) AS parsed_content
+# MAGIC   FROM read_files('s3://invoices/inbox/', format => 'binaryFile')
+# MAGIC );
+# MAGIC */
+# MAGIC
+# MAGIC -- Steps 2 and 3 below use simulated parsed_text to demonstrate ai_query without real PDFs.
+# MAGIC SELECT 'Replace the path above and uncomment to run on real documents.' AS note;
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Step 2: Extract structured fields with `ai_query`
 # MAGIC
 # MAGIC `responseFormat => 'STRUCT<...>'` tells the model to return typed columns, not a raw string.
