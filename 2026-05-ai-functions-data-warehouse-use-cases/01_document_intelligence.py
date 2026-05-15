@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Use Case 1: Document Intelligence - Turning PDFs into Rows
 # MAGIC
-# MAGIC **What this notebook does:** Demonstrates how to use `ai_parse_document` + `ai_query` to extract structured
+# MAGIC **What this notebook does:** Demonstrates how to use `ai_parse_document` + `ai_extract` (v2) to extract structured
 # MAGIC data from PDF documents stored in cloud storage - no OCR service, no Python pre-processing.
 # MAGIC
 # MAGIC **What you need to run this:**
@@ -20,7 +20,7 @@
 # MAGIC
 # MAGIC In production, `ai_parse_document` reads binary PDF content directly from cloud storage.
 # MAGIC For this demo, we simulate the *output* of `ai_parse_document` - the extracted raw text -
-# MAGIC so you can see how `ai_query` processes it without needing real PDFs.
+# MAGIC so you can see how `ai_extract` processes it without needing real PDFs.
 
 # COMMAND ----------
 
@@ -59,7 +59,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 1b: How `ai_parse_document` feeds into `ai_query` (production pattern)
+# MAGIC ## Step 1b: How `ai_parse_document` feeds into `ai_extract` (production pattern)
 # MAGIC
 # MAGIC In production, you do not simulate the parsed text - you read real binary files and let
 # MAGIC `ai_parse_document` convert them. Here is how the two functions chain in a single query:
@@ -68,15 +68,16 @@
 # MAGIC    `ai_parse_document(content)` converts those bytes into a structured text string - preserving
 # MAGIC    headers, tables, and layout from the original PDF or image. The result is aliased as `parsed_content`.
 # MAGIC
-# MAGIC 2. **Outer SELECT**: `ai_query(...)` receives `parsed_content` as part of the prompt string via `CONCAT`.
-# MAGIC    The model never sees raw binary - only the structured text that `ai_parse_document` extracted.
+# MAGIC 2. **Outer SELECT**: `ai_extract(...)` receives `parsed_content` and a JSON array of field names. It
+# MAGIC    returns a struct keyed by those names. The model never sees raw binary - only the structured text
+# MAGIC    that `ai_parse_document` extracted.
 # MAGIC
 # MAGIC The query planner handles both functions in one execution plan. No intermediate files, no Python glue.
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Production pattern: ai_parse_document → ai_query in a single query
+# MAGIC -- Production pattern: ai_parse_document → ai_extract in a single query
 # MAGIC -- Replace 's3://invoices/inbox/' with your actual object storage path.
 # MAGIC -- This cell is commented out because it requires real binary PDFs to run.
 # MAGIC -- Uncomment and replace the path to use with actual documents.
@@ -84,14 +85,9 @@
 # MAGIC /*
 # MAGIC SELECT
 # MAGIC   document_path,
-# MAGIC   ai_query(
-# MAGIC     'databricks-claude-sonnet-4',
-# MAGIC     CONCAT(
-# MAGIC       'Extract vendor_name, invoice_no, invoice_date, ',
-# MAGIC       'total_amount, currency, line_items as JSON. Document: ',
-# MAGIC       parsed_content
-# MAGIC     ),
-# MAGIC     responseFormat => 'STRUCT<vendor_name:STRING, invoice_no:STRING, invoice_date:DATE, total_amount:DECIMAL(18,2), currency:STRING, line_items:STRING>'
+# MAGIC   ai_extract(
+# MAGIC     parsed_content,
+# MAGIC     '["vendor_name","invoice_no","invoice_date","total_amount","currency","line_items"]'
 # MAGIC   ) AS extracted
 # MAGIC FROM (
 # MAGIC   SELECT
@@ -101,31 +97,26 @@
 # MAGIC );
 # MAGIC */
 # MAGIC
-# MAGIC -- Steps 2 and 3 below use simulated parsed_text to demonstrate ai_query without real PDFs.
+# MAGIC -- Steps 2 and 3 below use simulated parsed_text to demonstrate ai_extract without real PDFs.
 # MAGIC SELECT 'Replace the path above and uncomment to run on real documents.' AS note;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2: Extract structured fields with `ai_query`
+# MAGIC ## Step 2: Extract structured fields with `ai_extract`
 # MAGIC
-# MAGIC `responseFormat => 'STRUCT<...>'` tells the model to return typed columns, not a raw string.
-# MAGIC Databricks automatically parses the JSON response into the named struct fields.
+# MAGIC `ai_extract` v2 takes a JSON array of field names and returns a struct keyed by those names. No prompt
+# MAGIC engineering, no `responseFormat`, no `from_json`. This replaces the older `ai_query` + STRUCT pattern
+# MAGIC for plain field extraction.
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC SELECT
 # MAGIC   document_id,
-# MAGIC   ai_query(
-# MAGIC     'databricks-claude-sonnet-4',
-# MAGIC     CONCAT(
-# MAGIC       'Extract these fields from the invoice text. Return null for any field not found. ',
-# MAGIC       'Fields: vendor_name (string), invoice_number (string), invoice_date (string in YYYY-MM-DD format), ',
-# MAGIC       'total_amount (decimal), currency_code (3-letter ISO code), payment_terms (string). ',
-# MAGIC       'Invoice text: ', parsed_text
-# MAGIC     ),
-# MAGIC     responseFormat => 'STRUCT<invoice_data:STRUCT<vendor_name:STRING, invoice_number:STRING, invoice_date:STRING, total_amount:DOUBLE, currency_code:STRING, payment_terms:STRING>>'
+# MAGIC   ai_extract(
+# MAGIC     parsed_text,
+# MAGIC     '["vendor_name","invoice_number","invoice_date","total_amount","currency_code","payment_terms"]'
 # MAGIC   ) AS extracted
 # MAGIC FROM demo_invoice_text;
 
@@ -139,26 +130,14 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC WITH raw AS (
+# MAGIC WITH extracted AS (
 # MAGIC   SELECT
 # MAGIC     document_id,
-# MAGIC     ai_query(
-# MAGIC       'databricks-claude-sonnet-4',
-# MAGIC       CONCAT(
-# MAGIC         'Extract these fields from the invoice text. Return null for any field not found. ',
-# MAGIC         'Fields: vendor_name (string), invoice_number (string), invoice_date (string in YYYY-MM-DD format), ',
-# MAGIC         'total_amount (decimal), currency_code (3-letter ISO code), payment_terms (string). ',
-# MAGIC         'Invoice text: ', parsed_text
-# MAGIC       ),
-# MAGIC       responseFormat => 'STRUCT<invoice_data:STRUCT<vendor_name:STRING, invoice_number:STRING, invoice_date:STRING, total_amount:DOUBLE, currency_code:STRING, payment_terms:STRING>>'
-# MAGIC     ) AS extracted
+# MAGIC     ai_extract(
+# MAGIC       parsed_text,
+# MAGIC       '["vendor_name","invoice_number","invoice_date","total_amount","currency_code","payment_terms"]'
+# MAGIC     ) AS invoice
 # MAGIC   FROM demo_invoice_text
-# MAGIC ),
-# MAGIC parsed AS (
-# MAGIC   SELECT
-# MAGIC     document_id,
-# MAGIC     from_json(extracted, 'STRUCT<vendor_name:STRING, invoice_number:STRING, invoice_date:STRING, total_amount:DOUBLE, currency_code:STRING, payment_terms:STRING>') AS invoice
-# MAGIC   FROM raw
 # MAGIC )
 # MAGIC SELECT
 # MAGIC   document_id,
@@ -168,7 +147,7 @@
 # MAGIC   invoice.total_amount,
 # MAGIC   invoice.currency_code,
 # MAGIC   invoice.payment_terms
-# MAGIC FROM parsed;
+# MAGIC FROM extracted;
 
 # COMMAND ----------
 

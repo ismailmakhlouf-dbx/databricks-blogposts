@@ -40,7 +40,9 @@
 # MAGIC %md
 # MAGIC ## Step 2: Classify intent and urgency in one query
 # MAGIC
-# MAGIC `ai_classify` picks the best matching label from your array. Change the labels any time - no retraining.
+# MAGIC `ai_classify` v2 takes labels as a JSON array string and returns a struct. Append `:response[0]::STRING`
+# MAGIC to pull the single label out. v2 supports up to 500 labels and accepts label descriptions; v1 (the
+# MAGIC older `ARRAY('label1', 'label2', ...)` form) is being deprecated. Change the labels any time - no retraining.
 
 # COMMAND ----------
 
@@ -51,12 +53,12 @@
 # MAGIC   ticket_body,
 # MAGIC   ai_classify(
 # MAGIC     ticket_body,
-# MAGIC     ARRAY('billing_issue', 'technical_outage', 'product_question', 'cancel_request', 'feature_request', 'praise', 'sales_inquiry', 'onboarding')
-# MAGIC   ) AS intent,
+# MAGIC     '["billing_issue","technical_outage","product_question","cancel_request","feature_request","praise","sales_inquiry","onboarding"]'
+# MAGIC   ):response[0]::STRING AS intent,
 # MAGIC   ai_classify(
 # MAGIC     ticket_body,
-# MAGIC     ARRAY('critical', 'high', 'medium', 'low')
-# MAGIC   ) AS urgency
+# MAGIC     '["critical","high","medium","low"]'
+# MAGIC   ):response[0]::STRING AS urgency
 # MAGIC FROM demo_support_tickets;
 
 # COMMAND ----------
@@ -74,12 +76,12 @@
 # MAGIC     ticket_body,
 # MAGIC     ai_classify(
 # MAGIC       ticket_body,
-# MAGIC       ARRAY('billing_issue', 'technical_outage', 'product_question', 'cancel_request', 'feature_request', 'praise', 'sales_inquiry', 'onboarding')
-# MAGIC     ) AS intent,
+# MAGIC       '["billing_issue","technical_outage","product_question","cancel_request","feature_request","praise","sales_inquiry","onboarding"]'
+# MAGIC     ):response[0]::STRING AS intent,
 # MAGIC     ai_classify(
 # MAGIC       ticket_body,
-# MAGIC       ARRAY('critical', 'high', 'medium', 'low')
-# MAGIC     ) AS urgency
+# MAGIC       '["critical","high","medium","low"]'
+# MAGIC     ):response[0]::STRING AS urgency
 # MAGIC   FROM demo_support_tickets
 # MAGIC )
 # MAGIC SELECT
@@ -127,4 +129,4 @@
 # MAGIC - Replace `demo_support_tickets` with your live `bronze.support_tickets` table
 # MAGIC - Schedule this as a nightly SQL job and `MERGE INTO` a `gold.ticket_classifications` table
 # MAGIC - Update the label arrays by changing the SQL, not retraining a model
-# MAGIC - Add `ai_classify(ticket_body, ARRAY('en', 'fr', 'de', 'es', 'other'))` to auto-detect language if you have multilingual tickets
+# MAGIC - Add `ai_classify(ticket_body, '["en","fr","de","es","other"]'):response[0]::STRING` to auto-detect language if you have multilingual tickets

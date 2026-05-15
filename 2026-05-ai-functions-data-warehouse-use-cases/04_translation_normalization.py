@@ -49,7 +49,7 @@
 # MAGIC   ai_translate(review_text, 'en') AS review_en,
 # MAGIC   ai_extract(
 # MAGIC     ai_translate(review_text, 'en'),
-# MAGIC     ARRAY('overall_sentiment', 'packaging_issue', 'delivery_issue', 'customer_service_mentioned', 'would_repurchase')
+# MAGIC     '["overall_sentiment","packaging_issue","delivery_issue","customer_service_mentioned","would_repurchase"]'
 # MAGIC   ) AS attributes
 # MAGIC FROM demo_product_reviews;
 
@@ -75,28 +75,11 @@
 # MAGIC     product_id,
 # MAGIC     source_locale,
 # MAGIC     review_en,
-# MAGIC     ai_query(
-# MAGIC       'databricks-claude-sonnet-4',
-# MAGIC       CONCAT(
-# MAGIC         'From this product review, extract: ',
-# MAGIC         'overall_sentiment (positive/negative/mixed), ',
-# MAGIC         'packaging_mentioned (true/false), ',
-# MAGIC         'delivery_mentioned (true/false), ',
-# MAGIC         'repurchase_intent (yes/no/unclear). ',
-# MAGIC         'Review: ', review_en
-# MAGIC       ),
-# MAGIC       responseFormat => 'STRUCT<attrs:STRUCT<overall_sentiment:STRING, packaging_mentioned:BOOLEAN, delivery_mentioned:BOOLEAN, repurchase_intent:STRING>>'
-# MAGIC     ) AS raw_attrs
+# MAGIC     ai_extract(
+# MAGIC       review_en,
+# MAGIC       '["overall_sentiment","packaging_mentioned","delivery_mentioned","repurchase_intent"]'
+# MAGIC     ) AS attrs
 # MAGIC   FROM translated
-# MAGIC ),
-# MAGIC parsed AS (
-# MAGIC   SELECT
-# MAGIC     review_id,
-# MAGIC     product_id,
-# MAGIC     source_locale,
-# MAGIC     review_en,
-# MAGIC     from_json(raw_attrs, 'STRUCT<overall_sentiment:STRING, packaging_mentioned:BOOLEAN, delivery_mentioned:BOOLEAN, repurchase_intent:STRING>') AS attrs
-# MAGIC   FROM extracted
 # MAGIC )
 # MAGIC SELECT
 # MAGIC   review_id,
@@ -107,7 +90,7 @@
 # MAGIC   attrs.packaging_mentioned,
 # MAGIC   attrs.delivery_mentioned,
 # MAGIC   attrs.repurchase_intent
-# MAGIC FROM parsed;
+# MAGIC FROM extracted;
 
 # COMMAND ----------
 

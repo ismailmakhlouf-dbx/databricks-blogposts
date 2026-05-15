@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Use Case 5: Customer Feedback Sentiment Analysis - Closing the Loop on What Users Actually Think
 # MAGIC
-# MAGIC **What this notebook does:** Uses `ai_analyze_sentiment` + `ai_classify` to turn raw NPS verbatims and
+# MAGIC **What this notebook does:** Uses `ai_classify` (v2) for both sentiment and topic to turn raw NPS verbatims and
 # MAGIC support responses into structured feedback signals - polarity, topic, and urgency in one query.
 # MAGIC
 # MAGIC **What you need to run this:**
@@ -42,8 +42,9 @@
 # MAGIC %md
 # MAGIC ## Step 2: Add sentiment + topic classification in one query
 # MAGIC
-# MAGIC `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` - no score, just polarity.
-# MAGIC Use alongside `ai_classify` for topic and urgency tagging.
+# MAGIC `ai_classify` v2 handles sentiment with explicit labels (`positive`, `negative`, `neutral`, `mixed`),
+# MAGIC topic tagging, and urgency in one query. Pass labels as a JSON array string and pull the chosen label
+# MAGIC with `:response[0]::STRING`.
 
 # COMMAND ----------
 
@@ -52,17 +53,18 @@
 # MAGIC   response_id,
 # MAGIC   channel,
 # MAGIC   nps_score,
-# MAGIC   ai_analyze_sentiment(verbatim_text)                                          AS sentiment,
 # MAGIC   ai_classify(
 # MAGIC     verbatim_text,
-# MAGIC     ARRAY('pricing_complaint', 'performance_issue', 'support_experience',
-# MAGIC           'feature_request', 'cancel_signal', 'general_praise', 'billing_issue',
-# MAGIC           'documentation_gap')
-# MAGIC   )                                                                              AS topic,
+# MAGIC     '["positive","negative","neutral","mixed"]'
+# MAGIC   ):response[0]::STRING                                                          AS sentiment,
 # MAGIC   ai_classify(
 # MAGIC     verbatim_text,
-# MAGIC     ARRAY('high_urgency', 'medium_urgency', 'low_urgency')
-# MAGIC   )                                                                              AS urgency,
+# MAGIC     '["pricing_complaint","performance_issue","support_experience","feature_request","cancel_signal","general_praise","billing_issue","documentation_gap"]'
+# MAGIC   ):response[0]::STRING                                                          AS topic,
+# MAGIC   ai_classify(
+# MAGIC     verbatim_text,
+# MAGIC     '["high_urgency","medium_urgency","low_urgency"]'
+# MAGIC   ):response[0]::STRING                                                          AS urgency,
 # MAGIC   LEFT(verbatim_text, 80)                                                        AS verbatim_preview
 # MAGIC FROM demo_nps_responses;
 
@@ -83,17 +85,18 @@
 # MAGIC     channel,
 # MAGIC     nps_score,
 # MAGIC     verbatim_text,
-# MAGIC     ai_analyze_sentiment(verbatim_text) AS sentiment,
 # MAGIC     ai_classify(
 # MAGIC       verbatim_text,
-# MAGIC       ARRAY('pricing_complaint', 'performance_issue', 'support_experience',
-# MAGIC             'feature_request', 'cancel_signal', 'general_praise', 'billing_issue',
-# MAGIC             'documentation_gap')
-# MAGIC     ) AS topic,
+# MAGIC       '["positive","negative","neutral","mixed"]'
+# MAGIC     ):response[0]::STRING AS sentiment,
 # MAGIC     ai_classify(
 # MAGIC       verbatim_text,
-# MAGIC       ARRAY('high_urgency', 'medium_urgency', 'low_urgency')
-# MAGIC     ) AS urgency
+# MAGIC       '["pricing_complaint","performance_issue","support_experience","feature_request","cancel_signal","general_praise","billing_issue","documentation_gap"]'
+# MAGIC     ):response[0]::STRING AS topic,
+# MAGIC     ai_classify(
+# MAGIC       verbatim_text,
+# MAGIC       '["high_urgency","medium_urgency","low_urgency"]'
+# MAGIC     ):response[0]::STRING AS urgency
 # MAGIC   FROM demo_nps_responses
 # MAGIC )
 # MAGIC SELECT
@@ -139,9 +142,10 @@
 # MAGIC | NPS-009 | mobile_app | 6 | mixed | performance_issue | medium_urgency | ⚪ Standard |
 # MAGIC
 # MAGIC ## Key behavior to verify
-# MAGIC - `ai_analyze_sentiment` returns `positive`, `negative`, or `mixed` - NOT a numeric score
+# MAGIC - `ai_classify` v2 returns a struct; `:response[0]::STRING` pulls the chosen label out
 # MAGIC - A high NPS score (e.g., 7/10) with a `mixed` sentiment is valid - the model captures nuance the score misses
-# MAGIC - `ai_classify` and `ai_analyze_sentiment` are independent calls - combine them for compound filters
+# MAGIC - Each `ai_classify` call is independent - combine them with AND/OR to build compound filters
+# MAGIC - v1's `ARRAY('a','b','c')` form is being deprecated; pass a JSON array string instead
 # MAGIC - **Past-tense cancel signals (NPS-008):** "We moved to a competitor last month" is correctly read as already-churned, so `urgency = low_urgency`. The `cancel_signal` topic still triggers the retention action - urgency does not gate it. This is correct model behavior. If you want all cancel signals treated as `high_urgency` regardless of tense, add a CASE override in the final SELECT: `CASE WHEN topic = 'cancel_signal' THEN 'high_urgency' ELSE urgency END AS urgency`
 # MAGIC
 # MAGIC ## What to do next

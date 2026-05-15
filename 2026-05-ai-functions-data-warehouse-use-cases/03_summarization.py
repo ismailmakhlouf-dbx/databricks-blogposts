@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Use Case 3: Long-form Summarization for BI Workflows
 # MAGIC
-# MAGIC **What this notebook does:** Uses `ai_query` with structured response format (`responseFormat => 'STRUCT<...>'`)
+# MAGIC **What this notebook does:** Uses `ai_extract` (v2) for the structured fields and `ai_query` against `databricks-gpt-oss-120b` for the bespoke one-sentence summary
 # MAGIC to extract typed fields from long-form text - turning unstructured call transcripts into a queryable BI table.
 # MAGIC
 # MAGIC **What you need to run this:**
@@ -76,7 +76,11 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2: Extract structured fields with `ai_query` + STRUCT response format
+# MAGIC ## Step 2: Extract structured fields with `ai_extract` + a bespoke summary via `ai_query`
+# MAGIC
+# MAGIC `ai_extract` v2 takes a JSON array of field names and returns a struct keyed by those names. For the
+# MAGIC one-sentence "next step" - which doesn't fit a flat field - call `ai_query` against
+# MAGIC `databricks-gpt-oss-120b` (the recommended general-purpose model).
 
 # COMMAND ----------
 
@@ -85,19 +89,17 @@
 # MAGIC   call_id,
 # MAGIC   account_id,
 # MAGIC   call_date,
+# MAGIC   ai_extract(
+# MAGIC     transcript,
+# MAGIC     '["owner","deal_stage","risk_flag","risk_reason"]'
+# MAGIC   ) AS facts,
 # MAGIC   ai_query(
-# MAGIC     'databricks-claude-sonnet-4',
+# MAGIC     'databricks-gpt-oss-120b',
 # MAGIC     CONCAT(
-# MAGIC       'From this sales call transcript, extract the following. Return null for any field not found. ',
-# MAGIC       'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC       'owner: who is responsible for the next step - use Rep for the sales rep or Customer for the customer. ',
-# MAGIC       'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
-# MAGIC       'risk_flag: true if there is a deal risk, false otherwise. ',
-# MAGIC       'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
+# MAGIC       'In one sentence, what is the agreed next step from this sales call transcript? ',
 # MAGIC       'Transcript: ', transcript
-# MAGIC     ),
-# MAGIC     responseFormat => 'STRUCT<call_summary:STRUCT<next_step:STRING, owner:STRING, deal_stage:STRING, risk_flag:BOOLEAN, risk_reason:STRING>>'
-# MAGIC   ) AS call_summary
+# MAGIC     )
+# MAGIC   ) AS next_step
 # MAGIC FROM demo_call_transcripts;
 
 # COMMAND ----------
@@ -113,40 +115,30 @@
 # MAGIC     call_id,
 # MAGIC     account_id,
 # MAGIC     call_date,
+# MAGIC     ai_extract(
+# MAGIC       transcript,
+# MAGIC       '["owner","deal_stage","risk_flag","risk_reason"]'
+# MAGIC     ) AS facts,
 # MAGIC     ai_query(
-# MAGIC       'databricks-claude-sonnet-4',
+# MAGIC       'databricks-gpt-oss-120b',
 # MAGIC       CONCAT(
-# MAGIC         'From this sales call transcript, extract the following. Return null for any field not found. ',
-# MAGIC         'next_step: one clear sentence describing the agreed next action. ',
-# MAGIC         'owner: who is responsible for the next step - use Rep for the sales rep or Customer for the customer. ',
-# MAGIC         'deal_stage: one of [discovery, evaluation, negotiation, technical_validation, closed_won, closed_lost, renewal]. ',
-# MAGIC         'risk_flag: true if there is a deal risk, false otherwise. ',
-# MAGIC         'risk_reason: one sentence explaining the risk if risk_flag is true, otherwise null. ',
+# MAGIC         'In one sentence, what is the agreed next step from this sales call transcript? ',
 # MAGIC         'Transcript: ', transcript
-# MAGIC       ),
-# MAGIC       responseFormat => 'STRUCT<call_summary:STRUCT<next_step:STRING, owner:STRING, deal_stage:STRING, risk_flag:BOOLEAN, risk_reason:STRING>>'
-# MAGIC     ) AS raw_summary
+# MAGIC       )
+# MAGIC     ) AS next_step
 # MAGIC   FROM demo_call_transcripts
-# MAGIC ),
-# MAGIC parsed AS (
-# MAGIC   SELECT
-# MAGIC     call_id,
-# MAGIC     account_id,
-# MAGIC     call_date,
-# MAGIC     from_json(raw_summary, 'STRUCT<next_step:STRING, owner:STRING, deal_stage:STRING, risk_flag:BOOLEAN, risk_reason:STRING>') AS s
-# MAGIC   FROM summarized
 # MAGIC )
 # MAGIC SELECT
 # MAGIC   call_id,
 # MAGIC   account_id,
 # MAGIC   call_date,
-# MAGIC   s.next_step,
-# MAGIC   s.owner,
-# MAGIC   s.deal_stage,
-# MAGIC   s.risk_flag,
-# MAGIC   s.risk_reason
-# MAGIC FROM parsed
-# MAGIC ORDER BY s.risk_flag DESC, call_date;
+# MAGIC   next_step,
+# MAGIC   facts.owner,
+# MAGIC   facts.deal_stage,
+# MAGIC   facts.risk_flag,
+# MAGIC   facts.risk_reason
+# MAGIC FROM summarized
+# MAGIC ORDER BY facts.risk_flag DESC, call_date;
 
 # COMMAND ----------
 
@@ -162,10 +154,10 @@
 # MAGIC | CALL-005 | ACCT-0331 | renewal | Rep | false | null | Rep to send capacity planning guide and Unity Catalog compliance docs |
 # MAGIC
 # MAGIC ## Key behavior to verify
-# MAGIC - The `owner` field returns `Rep` or `Customer` - not a first name. The transcripts use role labels ("Rep:", "Customer:") with no personal names, so the prompt explicitly instructs the model to use these labels. If your real transcripts include speaker names, update the prompt to: `owner: first name of the person responsible for the next step`.
-# MAGIC - `risk_flag` is a boolean: CALL-001 (price shock + competitive eval) and CALL-003 (hard deadline + blocked migration) are the expected risk rows.
-# MAGIC - `deal_stage` values are constrained to the enum in the prompt - the model will not return values outside that list.
-# MAGIC - `from_json` is used to flatten the struct because `ai_query` with `responseFormat => STRUCT<...>` returns the inner fields as a JSON string that must be parsed. This is the standard pattern for nested struct extraction in Databricks SQL.
+# MAGIC - `ai_extract` returns a struct - `facts.owner`, `facts.deal_stage`, etc. - keyed by the field names you pass in the JSON array. No `from_json` step needed (that was the v1 + `ai_query`/`responseFormat` pattern).
+# MAGIC - The `owner` field typically returns `Rep` or `Customer` since the transcripts use role labels rather than personal names. If your real transcripts include speaker names, ai_extract will pull them out directly.
+# MAGIC - `risk_flag` is inferred from the transcript: CALL-001 (price shock + competitive eval) and CALL-003 (hard deadline + blocked migration) are the expected risk rows.
+# MAGIC - For richer label control (e.g. constraining `deal_stage` to a fixed enum), wrap the field in `ai_classify` with explicit labels instead of relying on free-text extraction.
 # MAGIC
 # MAGIC ## What to do next
 # MAGIC - Point this at `gold.call_transcripts` and schedule it nightly
